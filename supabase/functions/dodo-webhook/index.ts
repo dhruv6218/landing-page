@@ -11,11 +11,15 @@ const FOUNDING_PRODUCT_ID = Deno.env.get("DODO_FOUNDING_PRODUCT_ID") ?? "pdt_0Ng
 const PARTNER_PRODUCT_ID = Deno.env.get("DODO_PARTNER_PRODUCT_ID") ?? "pdt_0NgWHyWPWElDnZF0LIdSU";
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const FROM_EMAIL = "ASTRIX AI <noreply@astrixai.app>";
-
 const FOUNDING_WA = "https://chat.whatsapp.com/IikC8WZERUn3VWtt0MFX4q";
 const PARTNER_WA = "https://chat.whatsapp.com/HlnclUyto1JBHCCqWat4A8";
 
-function getTierFromProductCart(productCart: Array<{ product_id: string; quantity: number }>): string {
+interface ProductCartItem {
+  product_id: string;
+  quantity: number;
+}
+
+function getTierFromProductCart(productCart: ProductCartItem[]): string {
   for (const item of productCart) {
     if (item.product_id === PARTNER_PRODUCT_ID) return "founder_call";
     if (item.product_id === FOUNDING_PRODUCT_ID) return "founding_access";
@@ -23,12 +27,35 @@ function getTierFromProductCart(productCart: Array<{ product_id: string; quantit
   return "founding_access";
 }
 
-async function sendConfirmationEmail(email: string, tier: string) {
+async function sendEmail(to: string, subject: string, html: string) {
   if (!RESEND_API_KEY) {
-    console.log("No RESEND_API_KEY configured, skipping email");
+    console.error("RESEND_API_KEY not configured, skipping email");
     return;
   }
 
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${RESEND_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ from: FROM_EMAIL, to, subject, html }),
+    });
+
+    if (!res.ok) {
+      const err = await res.text();
+      console.error("Resend API error:", err);
+    } else {
+      const data = await res.json();
+      console.log("Email sent successfully:", data.id);
+    }
+  } catch (e) {
+    console.error("Email send error:", e);
+  }
+}
+
+function sendPaidConfirmationEmail(email: string, tier: string) {
   const isPartner = tier === "founder_call";
   const waLink = isPartner ? PARTNER_WA : FOUNDING_WA;
   const tierName = isPartner ? "Design Partner" : "Founding Access";
@@ -68,27 +95,7 @@ async function sendConfirmationEmail(email: string, tier: string) {
 </body>
 </html>`;
 
-  try {
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${RESEND_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: FROM_EMAIL,
-        to: email,
-        subject: `You're in. Welcome to ASTRIX AI ${tierName}.`,
-        html,
-      }),
-    });
-    if (!res.ok) {
-      const err = await res.text();
-      console.error("Resend error:", err);
-    }
-  } catch (e) {
-    console.error("Email send error:", e);
-  }
+  sendEmail(email, `You're in. Welcome to ASTRIX AI ${tierName}.`, html);
 }
 
 Deno.serve(async (req: Request) => {
@@ -104,8 +111,8 @@ Deno.serve(async (req: Request) => {
 
     const payload = await req.json();
 
-    // Dodo Payments webhook structure:
-    // payload.type = "payment.succeeded" | "payment.failed" | "payment.processing" | "payment.cancelled"
+    // Dodo Payments webhook payload structure:
+    // payload.type = "payment.succeeded" | "payment.failed" | "payment.cancelled" | "payment.processing"
     //               | "subscription.active" | "subscription.cancelled" | etc.
     // payload.data.customer.email
     // payload.data.product_cart = [{ product_id, quantity }]
@@ -115,8 +122,7 @@ Deno.serve(async (req: Request) => {
     const data = payload.data ?? {};
     const customer = data.customer ?? {};
     const email = customer.email;
-    const productCart: Array<{ product_id: string; quantity: number }> = data.product_cart ?? [];
-    const paymentStatus = data.status ?? "";
+    const productCart: ProductCartItem[] = data.product_cart ?? [];
 
     if (!email) {
       return new Response(JSON.stringify({ error: "Missing customer email" }), {
@@ -127,7 +133,7 @@ Deno.serve(async (req: Request) => {
 
     const tier = getTierFromProductCart(productCart);
 
-    // Handle payment success
+    // Payment succeeded — update DB + send confirmation email
     if (type === "payment.succeeded") {
       const { data: existing } = await supabase
         .from("early_access_leads")
@@ -146,11 +152,10 @@ Deno.serve(async (req: Request) => {
           .insert({ email, selected_offer: tier, payment_status: "paid" });
       }
 
-      // Send confirmation email
-      await sendConfirmationEmail(email, tier);
+      sendPaidConfirmationEmail(email, tier);
     }
 
-    // Handle payment failed
+    // Payment failed
     if (type === "payment.failed") {
       const { data: existing } = await supabase
         .from("early_access_leads")
@@ -166,7 +171,7 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Handle payment cancelled
+    // Payment cancelled
     if (type === "payment.cancelled") {
       const { data: existing } = await supabase
         .from("early_access_leads")
@@ -182,8 +187,7 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // payment.processing — just acknowledge, don't update DB yet
-    // subscription events — acknowledge for now
+    // payment.processing, subscription.* — acknowledge only
 
     return new Response(JSON.stringify({ success: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

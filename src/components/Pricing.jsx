@@ -346,7 +346,6 @@ export default function Pricing() {
     setLoading(true);
 
     try {
-      // Always try to save lead to Supabase
       if (!supabase) {
         console.error('Supabase client is null — env vars may be missing');
         throw new Error('Configuration error. Please try again later.');
@@ -360,7 +359,6 @@ export default function Pricing() {
       }]);
 
       if (dbError) {
-        // Supabase v2 returns error.code for constraint violations
         const isDuplicate = dbError.code === '23505' ||
           dbError.message?.includes('duplicate') ||
           dbError.message?.includes('unique') ||
@@ -370,8 +368,21 @@ export default function Pricing() {
           console.error('DB insert error:', dbError);
           throw new Error('Failed to save your details. Please try again.');
         }
-        // Duplicate — user already signed up, still proceed
         console.log('Duplicate email, proceeding:', email);
+      }
+
+      // Send welcome email via edge function (fire and forget)
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      if (supabaseUrl && supabaseAnonKey) {
+        fetch(`${supabaseUrl}/functions/v1/send-email`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabaseAnonKey}`,
+          },
+          body: JSON.stringify({ email, tier: tier.id }),
+        }).catch(err => console.error('Email send failed:', err));
       }
 
       if (tier.type === 'paid') {
