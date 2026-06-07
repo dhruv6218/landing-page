@@ -346,20 +346,32 @@ export default function Pricing() {
     setLoading(true);
 
     try {
-      if (supabase) {
-        const { error: dbError } = await supabase.from('early_access_leads').insert([{
-          email,
-          role: role || null,
-          selected_offer: tier.id,
-          payment_status: tier.type === 'free' ? 'not_required' : 'pending'
-        }]);
+      // Always try to save lead to Supabase
+      if (!supabase) {
+        console.error('Supabase client is null — env vars may be missing');
+        throw new Error('Configuration error. Please try again later.');
+      }
 
-        if (dbError) {
-          // Duplicate email — still proceed to checkout
-          if (!dbError.message?.includes('duplicate') && !dbError.code?.includes('23505')) {
-            throw new Error('Failed to save your details. Please try again.');
-          }
+      const { error: dbError } = await supabase.from('early_access_leads').insert([{
+        email,
+        role: role || null,
+        selected_offer: tier.id,
+        payment_status: tier.type === 'free' ? 'not_required' : 'pending'
+      }]);
+
+      if (dbError) {
+        // Supabase v2 returns error.code for constraint violations
+        const isDuplicate = dbError.code === '23505' ||
+          dbError.message?.includes('duplicate') ||
+          dbError.message?.includes('unique') ||
+          dbError.message?.includes('already exists');
+
+        if (!isDuplicate) {
+          console.error('DB insert error:', dbError);
+          throw new Error('Failed to save your details. Please try again.');
         }
+        // Duplicate — user already signed up, still proceed
+        console.log('Duplicate email, proceeding:', email);
       }
 
       if (tier.type === 'paid') {
