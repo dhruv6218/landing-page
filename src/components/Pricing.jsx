@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, Lock, Loader2, Sparkles, MessageCircle, ExternalLink, Star, Zap, ShieldCheck, AlertCircle } from 'lucide-react';
+import { Check, Lock, Loader as Loader2, Sparkles, MessageCircle, ExternalLink, Star, Zap, ShieldCheck, CircleAlert as AlertCircle, Crown, Users } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import MagneticButton from './MagneticButton';
 
 const DODO_CHECKOUT_BASE = "https://checkout.dodopayments.com/buy";
+
+const FOUNDING_WA = "https://chat.whatsapp.com/IikC8WZERUn3VWtt0MFX4q";
+const PARTNER_WA = "https://chat.whatsapp.com/HlnclUyto1JBHCCqWat4A8";
 
 const tiers = [
   {
@@ -44,6 +47,149 @@ const tiers = [
 function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
+
+/* ─── Success Screens ─── */
+
+function WaitlistSuccess({ onReset }) {
+  return (
+    <section id="pricing" className="py-60 text-center relative overflow-hidden bg-brand-midnight">
+      <div className="hero-gradient absolute inset-0 opacity-40" />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9, y: 30 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        className="max-w-3xl mx-auto glass-card p-16 md:p-24 rounded-[4rem] border-brand-cyan/20 relative z-10"
+      >
+        <div className="w-28 h-28 bg-brand-cyan rounded-full flex items-center justify-center mx-auto mb-12 shadow-[0_0_60px_rgba(0,209,255,0.3)]">
+          <Check className="w-14 h-14 text-brand-midnight" strokeWidth={5} />
+        </div>
+        <h2 className="text-5xl md:text-7xl font-black mb-6 tracking-tighter">You're on the list.</h2>
+        <p className="text-xl md:text-2xl text-zinc-400 font-medium leading-relaxed mb-10">
+          You'll be among the first to know when ASTRIX AI opens up. Stay tuned for updates.
+        </p>
+        <div className="bg-white/[0.03] p-10 rounded-[2.5rem] mb-12 border border-white/10">
+          <p className="text-brand-cyan font-black uppercase tracking-[0.4em] text-[10px] mb-4 flex items-center gap-3">
+            <Users className="w-4 h-4" /> What happens next
+          </p>
+          <ul className="text-left space-y-3 text-lg text-zinc-300 font-medium">
+            <li className="flex items-start gap-3"><span className="text-brand-cyan">1.</span> We'll email you when beta slots open</li>
+            <li className="flex items-start gap-3"><span className="text-brand-cyan">2.</span> You get early access before the public</li>
+            <li className="flex items-start gap-3"><span className="text-brand-cyan">3.</span> You can always upgrade to Founding Access later</li>
+          </ul>
+        </div>
+        <button
+          onClick={onReset}
+          className="text-zinc-500 hover:text-white text-sm font-bold uppercase tracking-widest transition-colors"
+        >
+          Back to page
+        </button>
+      </motion.div>
+    </section>
+  );
+}
+
+function FoundingSuccess({ onReset }) {
+  return (
+    <section id="pricing" className="py-60 text-center relative overflow-hidden bg-brand-midnight">
+      <div className="hero-gradient absolute inset-0 opacity-40" />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9, y: 30 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        className="max-w-3xl mx-auto glass-card p-16 md:p-24 rounded-[4rem] border-brand-orange/30 relative z-10"
+      >
+        <div className="w-32 h-32 bg-brand-orange rounded-full flex items-center justify-center mx-auto mb-12 orange-glow shadow-[0_0_80px_rgba(255,153,0,0.4)]">
+          <Star className="w-16 h-16 text-brand-midnight fill-current" strokeWidth={0} />
+        </div>
+        <h2 className="text-5xl md:text-7xl font-black mb-6 tracking-tighter">You're an Exclusive Founding Member.</h2>
+        <p className="text-xl md:text-2xl text-zinc-400 font-medium leading-relaxed mb-10">
+          You'll get first access to everything. Before anyone else.
+        </p>
+
+        <div className="bg-white/[0.03] p-12 rounded-[2.5rem] mb-12 text-left border border-white/10">
+          <p className="text-brand-orange font-black uppercase tracking-[0.4em] text-[10px] mb-6 flex items-center gap-3">
+            <Star className="w-4 h-4 fill-current" /> Founder's Message
+          </p>
+          <p className="text-2xl md:text-3xl text-zinc-300 italic leading-relaxed font-medium">
+            You are an exclusive founding member! Join the group below for all updates. This is where the founding community lives. You'll get first access to every module, every feature, every decision. Stay ahead of the curve.
+          </p>
+        </div>
+
+        <div className="bg-white/[0.03] p-10 rounded-[2.5rem] mb-12 border border-white/10">
+          <p className="text-brand-cyan font-black uppercase tracking-[0.4em] text-[10px] mb-6">What you get</p>
+          <ul className="text-left space-y-3 text-lg text-zinc-300 font-medium">
+            <li className="flex items-start gap-3"><Check className="w-5 h-5 text-brand-cyan shrink-0 mt-1" /> Guaranteed first access to beta</li>
+            <li className="flex items-start gap-3"><Check className="w-5 h-5 text-brand-cyan shrink-0 mt-1" /> Founding member badge forever</li>
+            <li className="flex items-start gap-3"><Check className="w-5 h-5 text-brand-cyan shrink-0 mt-1" /> Lifetime 20% discount on all plans</li>
+            <li className="flex items-start gap-3"><Check className="w-5 h-5 text-brand-cyan shrink-0 mt-1" /> Exclusive WhatsApp group access below</li>
+          </ul>
+        </div>
+
+        <MagneticButton
+          href={FOUNDING_WA}
+          className="flex items-center justify-center gap-4 w-full py-8 bg-[#25D366] text-white rounded-[2.5rem] font-black text-2xl shadow-2xl hover:shadow-[#25D366]/30 transition-all"
+        >
+          <MessageCircle className="w-8 h-8 fill-current" />
+          Join Exclusive Founding Group
+          <ExternalLink className="w-6 h-6 opacity-50" />
+        </MagneticButton>
+
+        <p className="text-zinc-600 text-xs mt-6 font-bold uppercase tracking-widest">This group is exclusively for paid founding members only.</p>
+      </motion.div>
+    </section>
+  );
+}
+
+function PartnerSuccess({ onReset }) {
+  return (
+    <section id="pricing" className="py-60 text-center relative overflow-hidden bg-brand-midnight">
+      <div className="hero-gradient absolute inset-0 opacity-40" />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9, y: 30 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        className="max-w-3xl mx-auto glass-card p-16 md:p-24 rounded-[4rem] border-brand-orange/30 relative z-10"
+      >
+        <div className="w-32 h-32 bg-gradient-to-br from-brand-orange to-brand-cyan rounded-full flex items-center justify-center mx-auto mb-12 shadow-[0_0_80px_rgba(255,153,0,0.4)]">
+          <Crown className="w-16 h-16 text-brand-midnight" strokeWidth={2.5} />
+        </div>
+        <h2 className="text-5xl md:text-7xl font-black mb-6 tracking-tighter">You're a VVIP Design Partner.</h2>
+        <p className="text-xl md:text-2xl text-zinc-400 font-medium leading-relaxed mb-10">
+          You don't just use the product — you shape it.
+        </p>
+
+        <div className="bg-white/[0.03] p-12 rounded-[2.5rem] mb-12 text-left border border-white/10">
+          <p className="text-brand-orange font-black uppercase tracking-[0.4em] text-[10px] mb-6 flex items-center gap-3">
+            <Crown className="w-4 h-4" /> Founder's Message
+          </p>
+          <p className="text-2xl md:text-3xl text-zinc-300 italic leading-relaxed font-medium">
+            You are a VVIP design partner! You'll shape this product with your experience and needs. Tell us what features you want — we build based on majority input from partners like you. Join the partner group below — this is where the real decisions happen.
+          </p>
+        </div>
+
+        <div className="bg-white/[0.03] p-10 rounded-[2.5rem] mb-12 border border-white/10">
+          <p className="text-brand-cyan font-black uppercase tracking-[0.4em] text-[10px] mb-6">Your VVIP perks</p>
+          <ul className="text-left space-y-3 text-lg text-zinc-300 font-medium">
+            <li className="flex items-start gap-3"><Check className="w-5 h-5 text-brand-orange shrink-0 mt-1" /> 1-on-1 Founder call to discuss your needs</li>
+            <li className="flex items-start gap-3"><Check className="w-5 h-5 text-brand-orange shrink-0 mt-1" /> Custom feature requests — you drive the roadmap</li>
+            <li className="flex items-start gap-3"><Check className="w-5 h-5 text-brand-orange shrink-0 mt-1" /> Direct Slack channel with the team</li>
+            <li className="flex items-start gap-3"><Check className="w-5 h-5 text-brand-orange shrink-0 mt-1" /> VVIP Partner WhatsApp group access below</li>
+          </ul>
+        </div>
+
+        <MagneticButton
+          href={PARTNER_WA}
+          className="flex items-center justify-center gap-4 w-full py-8 bg-[#25D366] text-white rounded-[2.5rem] font-black text-2xl shadow-2xl hover:shadow-[#25D366]/30 transition-all"
+        >
+          <MessageCircle className="w-8 h-8 fill-current" />
+          Join VVIP Partner Group
+          <ExternalLink className="w-6 h-6 opacity-50" />
+        </MagneticButton>
+
+        <p className="text-zinc-600 text-xs mt-6 font-bold uppercase tracking-widest">This group is exclusively for VVIP design partners only.</p>
+      </motion.div>
+    </section>
+  );
+}
+
+/* ─── Pricing Card ─── */
 
 function PricingCard({ tier, loading, onSubmit, error }) {
   const [email, setEmail] = useState('');
@@ -178,6 +324,8 @@ function PricingCard({ tier, loading, onSubmit, error }) {
   );
 }
 
+/* ─── Main Pricing Section ─── */
+
 export default function Pricing() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -189,7 +337,6 @@ export default function Pricing() {
       const tierId = params.get('tier');
       const tier = tiers.find(t => t.id === tierId) || tiers[1];
       setSuccessTier(tier);
-      // Clean up URL
       window.history.replaceState({}, '', '/');
     }
   }, []);
@@ -199,7 +346,6 @@ export default function Pricing() {
     setLoading(true);
 
     try {
-      // Always save to Supabase first
       if (supabase) {
         const { error: dbError } = await supabase.from('early_access_leads').insert([{
           email,
@@ -209,7 +355,7 @@ export default function Pricing() {
         }]);
 
         if (dbError) {
-          // Duplicate email is okay — still proceed to checkout
+          // Duplicate email — still proceed to checkout
           if (!dbError.message?.includes('duplicate') && !dbError.code?.includes('23505')) {
             throw new Error('Failed to save your details. Please try again.');
           }
@@ -217,15 +363,13 @@ export default function Pricing() {
       }
 
       if (tier.type === 'paid') {
-        // Redirect to Dodo Payments checkout
         const domain = window.location.origin;
         const redirectUrl = encodeURIComponent(`${domain}/?status=success&tier=${tier.id}`);
         const checkoutUrl = `${DODO_CHECKOUT_BASE}/${tier.productId}?quantity=1&redirect_url=${redirectUrl}&email=${encodeURIComponent(email)}`;
         window.location.href = checkoutUrl;
-        return; // Page will navigate away
+        return;
       }
 
-      // Free tier — show success immediately
       setSuccessTier(tier);
     } catch (err) {
       console.error('Submission error:', err);
@@ -235,48 +379,15 @@ export default function Pricing() {
     }
   };
 
-  if (successTier) {
-    const isPartner = successTier.id === 'founder_call';
-    const waLink = isPartner
-      ? "https://chat.whatsapp.com/HlnclUyto1JBHCCqWat4A8"
-      : "https://chat.whatsapp.com/IikC8WZERUn3VWtt0MFX4q";
-
-    return (
-      <section id="pricing" className="py-60 text-center relative overflow-hidden bg-brand-midnight">
-        <div className="hero-gradient absolute inset-0 opacity-40" />
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9, y: 30 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          className="max-w-3xl mx-auto glass-card p-16 md:p-24 rounded-[4rem] border-brand-orange/30 relative z-10"
-        >
-          <div className="w-32 h-32 bg-brand-orange rounded-full flex items-center justify-center mx-auto mb-12 orange-glow">
-            <Check className="w-16 h-16 text-brand-midnight" strokeWidth={5} />
-          </div>
-          <h2 className="text-5xl md:text-7xl font-black mb-10 tracking-tighter">Welcome to the Inner Circle.</h2>
-
-          <div className="bg-white/[0.03] p-12 rounded-[2.5rem] mb-12 text-left border border-white/10">
-            <p className="text-brand-orange font-black uppercase tracking-[0.4em] text-[10px] mb-6 flex items-center gap-3">
-              <Star className="w-4 h-4 fill-current" /> Founder's Message
-            </p>
-            <p className="text-2xl md:text-3xl text-zinc-300 italic leading-relaxed font-medium">
-              {isPartner
-                ? "You are an exclusive design partner! You'll help shape this product with your experience and needs. Join the partner group below."
-                : "You are an exclusive founding member! Join the group below for all updates. This is where the founding access community lives."
-              }
-            </p>
-          </div>
-
-          <MagneticButton
-            href={waLink}
-            className="flex items-center justify-center gap-4 w-full py-8 bg-[#25D366] text-white rounded-[2.5rem] font-black text-2xl shadow-2xl hover:shadow-[#25D366]/30 transition-all"
-          >
-            <MessageCircle className="w-8 h-8 fill-current" />
-            Join WhatsApp Group
-            <ExternalLink className="w-6 h-6 opacity-50" />
-          </MagneticButton>
-        </motion.div>
-      </section>
-    );
+  // Different success screens per tier
+  if (successTier?.id === 'waitlist') {
+    return <WaitlistSuccess onReset={() => setSuccessTier(null)} />;
+  }
+  if (successTier?.id === 'founding_access') {
+    return <FoundingSuccess onReset={() => setSuccessTier(null)} />;
+  }
+  if (successTier?.id === 'founder_call') {
+    return <PartnerSuccess onReset={() => setSuccessTier(null)} />;
   }
 
   return (

@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 
-export default function MagneticButton({ children, className, onClick, href }) {
+export default function MagneticButton({ children, className, onClick, href, type, disabled }) {
   const ref = useRef(null);
   const [position, setPosition] = useState({ x: 0, y: 0 });
 
@@ -19,7 +19,7 @@ export default function MagneticButton({ children, className, onClick, href }) {
 
   const { x, y } = position;
 
-  const content = (
+  const inner = (
     <motion.div
       ref={ref}
       onMouseMove={handleMouse}
@@ -33,8 +33,31 @@ export default function MagneticButton({ children, className, onClick, href }) {
   );
 
   if (href) {
-    return <a href={href} onClick={onClick}>{content}</a>;
+    return (
+      <a
+        href={href}
+        onClick={(e) => {
+          // Smooth scroll for same-page anchor links
+          if (href.startsWith('#')) {
+            e.preventDefault();
+            const target = document.querySelector(href);
+            if (target) target.scrollIntoView({ behavior: 'smooth' });
+          }
+          onClick?.(e);
+        }}
+      >
+        {inner}
+      </a>
+    );
   }
 
-  return <button onClick={onClick}>{content}</button>;
+  if (type === 'submit') {
+    return (
+      <button type="submit" disabled={disabled} onClick={onClick}>
+        {inner}
+      </button>
+    );
+  }
+
+  return <button onClick={onClick} disabled={disabled}>{inner}</button>;
 }

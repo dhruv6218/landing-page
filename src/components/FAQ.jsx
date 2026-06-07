@@ -65,7 +65,7 @@ function FAQItem({ faq, index }) {
 
 export default function FAQ() {
   return (
-    <section className="py-60 relative bg-brand-midnight">
+    <section id="faq" className="py-60 relative bg-brand-midnight">
       <div className="max-w-4xl mx-auto px-6">
         <div className="text-center mb-20">
           <motion.div
