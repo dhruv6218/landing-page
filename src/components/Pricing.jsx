@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Check, Lock, Loader2, Sparkles, MessageCircle, ExternalLink, Star, Zap, ShieldCheck } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Check, Lock, Loader2, Sparkles, MessageCircle, ExternalLink, Star, Zap, ShieldCheck, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import MagneticButton from './MagneticButton';
+
+const DODO_CHECKOUT_BASE = "https://checkout.dodopayments.com/buy";
 
 const tiers = [
   {
@@ -39,18 +41,38 @@ const tiers = [
   }
 ];
 
-function PricingCard({ tier, loading, onSubmit }) {
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function PricingCard({ tier, loading, onSubmit, error }) {
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('');
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [localError, setLocalError] = useState('');
 
   const handleMouseMove = (e) => {
     const rect = e.currentTarget.getBoundingClientRect();
     setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
   };
 
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    setLocalError('');
+
+    if (!email.trim()) {
+      setLocalError('Work email is required');
+      return;
+    }
+    if (!isValidEmail(email)) {
+      setLocalError('Please enter a valid email address');
+      return;
+    }
+    onSubmit(tier, email.trim(), role.trim());
+  };
+
   return (
-    <motion.div 
+    <motion.div
       onMouseMove={handleMouseMove}
       initial={{ opacity: 0, y: 30 }}
       whileInView={{ opacity: 1, y: 0 }}
@@ -59,10 +81,9 @@ function PricingCard({ tier, loading, onSubmit }) {
         tier.popular ? 'bg-brand-blue/5 border-brand-orange/40 orange-glow' : 'glass-card border-white/10'
       }`}
     >
-      {/* Elite Shimmer Overlay */}
       <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/[0.02] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 pointer-events-none" />
 
-      <div 
+      <div
         className="pointer-events-none absolute inset-0 z-0 transition-opacity duration-500 opacity-0 group-hover:opacity-100"
         style={{
           background: `radial-gradient(600px circle at ${mousePos.x}px ${mousePos.y}px, rgba(0, 209, 255, 0.08), transparent 40%)`
@@ -95,38 +116,55 @@ function PricingCard({ tier, loading, onSubmit }) {
         ))}
       </div>
 
-      <form 
-        onSubmit={(e) => onSubmit(e, tier, email, role)} 
+      <form
+        onSubmit={handleSubmit}
         className="space-y-5 relative z-10"
         autoComplete="off"
       >
-        <div className="relative group/input">
-          <input 
+        <div className="relative">
+          <input
             name={`email_${tier.id}`}
-            type="email" 
-            placeholder="Work email" 
+            type="email"
+            placeholder="Work email"
             required
-            className="w-full px-8 py-6 rounded-3xl bg-brand-midnight/50 border border-white/10 focus:border-brand-cyan outline-none transition-all text-lg font-bold text-white backdrop-blur-md"
-            value={email} 
-            onChange={(e) => setEmail(e.target.value)}
+            className={`w-full px-8 py-6 rounded-3xl bg-brand-midnight/50 border outline-none transition-all text-lg font-bold text-white backdrop-blur-md ${
+              localError ? 'border-red-500' : 'border-white/10 focus:border-brand-cyan'
+            }`}
+            value={email}
+            onChange={(e) => { setEmail(e.target.value); setLocalError(''); }}
           />
         </div>
-        <div className="relative group/input">
-          <input 
+        <div className="relative">
+          <input
             name={`role_${tier.id}`}
-            type="text" 
+            type="text"
             placeholder="Role (e.g. Head of Product)"
             className="w-full px-8 py-6 rounded-3xl bg-brand-midnight/50 border border-white/10 focus:border-brand-cyan outline-none transition-all text-lg font-bold text-white backdrop-blur-md"
-            value={role} 
+            value={role}
             onChange={(e) => setRole(e.target.value)}
           />
         </div>
-        <MagneticButton 
+
+        <AnimatePresence>
+          {(localError || error) && (
+            <motion.div
+              initial={{ opacity: 0, y: -5 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="flex items-center gap-2 text-red-400 text-sm font-bold px-2"
+            >
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              {localError || error}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <MagneticButton
           type="submit"
           disabled={loading}
           className={`w-full py-7 rounded-3xl font-black text-2xl transition-all flex items-center justify-center gap-4 active:scale-95 shimmer-btn ${
-            tier.popular ? 'bg-brand-orange text-brand-midnight hover:bg-white' : 'bg-white text-brand-midnight hover:bg-brand-cyan'
-          }`}
+            loading ? 'opacity-70 cursor-wait' : ''
+          } ${tier.popular ? 'bg-brand-orange text-brand-midnight hover:bg-white' : 'bg-white text-brand-midnight hover:bg-brand-cyan'}`}
         >
           {loading ? <Loader2 className="w-8 h-8 animate-spin" /> : (
             <>
@@ -142,42 +180,56 @@ function PricingCard({ tier, loading, onSubmit }) {
 
 export default function Pricing() {
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [successTier, setSuccessTier] = useState(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('status') === 'success') {
       const tierId = params.get('tier');
-      setSuccessTier(tiers.find(t => t.id === tierId) || tiers[1]);
+      const tier = tiers.find(t => t.id === tierId) || tiers[1];
+      setSuccessTier(tier);
+      // Clean up URL
+      window.history.replaceState({}, '', '/');
     }
   }, []);
 
-  const handleSubmit = async (e, tier, email, role) => {
-    e.preventDefault();
-    if (!email) return alert('Work email is required');
+  const handleSubmit = async (tier, email, role) => {
+    setError('');
     setLoading(true);
 
     try {
+      // Always save to Supabase first
       if (supabase) {
-        await supabase.from('early_access_leads').insert([{ 
-          email, 
-          role, 
+        const { error: dbError } = await supabase.from('early_access_leads').insert([{
+          email,
+          role: role || null,
           selected_offer: tier.id,
           payment_status: tier.type === 'free' ? 'not_required' : 'pending'
         }]);
+
+        if (dbError) {
+          // Duplicate email is okay — still proceed to checkout
+          if (!dbError.message?.includes('duplicate') && !dbError.code?.includes('23505')) {
+            throw new Error('Failed to save your details. Please try again.');
+          }
+        }
       }
 
       if (tier.type === 'paid') {
-        const domain = import.meta.env.VITE_APP_DOMAIN || window.location.origin;
+        // Redirect to Dodo Payments checkout
+        const domain = window.location.origin;
         const redirectUrl = encodeURIComponent(`${domain}/?status=success&tier=${tier.id}`);
-        const checkoutUrl = `https://checkout.dodopayments.com/buy/${tier.productId}?quantity=1&redirect_url=${redirectUrl}&email=${encodeURIComponent(email)}`;
+        const checkoutUrl = `${DODO_CHECKOUT_BASE}/${tier.productId}?quantity=1&redirect_url=${redirectUrl}&email=${encodeURIComponent(email)}`;
         window.location.href = checkoutUrl;
-      } else {
-        setSuccessTier(tier);
+        return; // Page will navigate away
       }
+
+      // Free tier — show success immediately
+      setSuccessTier(tier);
     } catch (err) {
       console.error('Submission error:', err);
-      alert('Something went wrong. Please try again.');
+      setError(err.message || 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -185,14 +237,14 @@ export default function Pricing() {
 
   if (successTier) {
     const isPartner = successTier.id === 'founder_call';
-    const waLink = isPartner 
-      ? "https://chat.whatsapp.com/HlnclUyto1JBHCCqWat4A8" 
+    const waLink = isPartner
+      ? "https://chat.whatsapp.com/HlnclUyto1JBHCCqWat4A8"
       : "https://chat.whatsapp.com/IikC8WZERUn3VWtt0MFX4q";
-    
+
     return (
       <section id="pricing" className="py-60 text-center relative overflow-hidden bg-brand-midnight">
         <div className="hero-gradient absolute inset-0 opacity-40" />
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, scale: 0.9, y: 30 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           className="max-w-3xl mx-auto glass-card p-16 md:p-24 rounded-[4rem] border-brand-orange/30 relative z-10"
@@ -201,20 +253,20 @@ export default function Pricing() {
             <Check className="w-16 h-16 text-brand-midnight" strokeWidth={5} />
           </div>
           <h2 className="text-5xl md:text-7xl font-black mb-10 tracking-tighter">Welcome to the Inner Circle.</h2>
-          
+
           <div className="bg-white/[0.03] p-12 rounded-[2.5rem] mb-12 text-left border border-white/10">
             <p className="text-brand-orange font-black uppercase tracking-[0.4em] text-[10px] mb-6 flex items-center gap-3">
               <Star className="w-4 h-4 fill-current" /> Founder's Message
             </p>
             <p className="text-2xl md:text-3xl text-zinc-300 italic leading-relaxed font-medium">
-              {isPartner 
-                ? "Bhai, you are my exclusive partner! You'll help build this SaaS to be more engaging with your experience and needs. Join the partner group below."
-                : "Bhai, you are my exclusive member! Please join this group for all the updates. This is where the founding access community lives. Stay ahead of the curve."
+              {isPartner
+                ? "You are an exclusive design partner! You'll help shape this product with your experience and needs. Join the partner group below."
+                : "You are an exclusive founding member! Join the group below for all updates. This is where the founding access community lives."
               }
             </p>
           </div>
 
-          <MagneticButton 
+          <MagneticButton
             href={waLink}
             className="flex items-center justify-center gap-4 w-full py-8 bg-[#25D366] text-white rounded-[2.5rem] font-black text-2xl shadow-2xl hover:shadow-[#25D366]/30 transition-all"
           >
@@ -245,7 +297,7 @@ export default function Pricing() {
 
         <div className="grid lg:grid-cols-3 gap-8">
           {tiers.map((tier) => (
-            <PricingCard key={tier.id} tier={tier} loading={loading} onSubmit={handleSubmit} />
+            <PricingCard key={tier.id} tier={tier} loading={loading} onSubmit={handleSubmit} error={error} />
           ))}
         </div>
       </div>

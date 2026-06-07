@@ -4,6 +4,7 @@ import Hero from './components/Hero';
 import HowItWorks from './components/HowItWorks';
 import Pricing from './components/Pricing';
 import FounderNote from './components/FounderNote';
+import FAQ from './components/FAQ';
 import EliteBackground from './components/EliteBackground';
 import LiveOutcomeTicker from './components/LiveOutcomeTicker';
 import { Linkedin, Mail } from 'lucide-react';
@@ -119,6 +120,7 @@ export default function App() {
 
         <Pricing />
         <FounderNote />
+        <FAQ />
 
         {/* Final CTA */}
         <section className="py-80 relative overflow-hidden bg-grain">
