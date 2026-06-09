@@ -1,23 +1,12 @@
-const GA_ID = import.meta.env.VITE_GA_MEASUREMENT_ID;
-
-let gaInitialized = false;
+const GA_ID = 'G-MT3CLWPXBZ';
 
 export function initAnalytics() {
-  if (!GA_ID || typeof window === 'undefined' || gaInitialized) return;
-  gaInitialized = true;
-
-  const script = document.createElement('script');
-  script.src = `https://www.googletagmanager.com/gtag/js?id=${GA_ID}`;
-  script.async = true;
-  document.head.appendChild(script);
-
+  // gtag is already loaded via the <head> snippet in index.html; nothing to do here.
+  if (typeof window === 'undefined') return;
   window.dataLayer = window.dataLayer || [];
-  window.gtag = function () { window.dataLayer.push(arguments); };
-  window.gtag('js', new Date());
-  window.gtag('config', GA_ID, {
-    send_page_view: true,
-    anonymize_ip: true,
-  });
+  if (!window.gtag) {
+    window.gtag = function () { window.dataLayer.push(arguments); };
+  }
 }
 
 export function trackEvent(eventName, params = {}) {
