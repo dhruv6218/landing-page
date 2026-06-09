@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
 import HowItWorks from './components/HowItWorks';
@@ -10,9 +10,14 @@ import LiveOutcomeTicker from './components/LiveOutcomeTicker';
 import { Linkedin, Mail } from 'lucide-react';
 import { motion } from 'framer-motion';
 import MagneticButton from './components/MagneticButton';
+import { initAnalytics, analytics } from './lib/analytics';
+import useScrollDepth from './hooks/useScrollDepth';
 
 export default function App() {
   const logoUrl = "https://images.dualite.app/2b015d31-734d-4289-b2bb-6448987e322e/saas-40f1e673-c290-4ee2-809e-39d90f42b0e0.webp";
+
+  useEffect(() => { initAnalytics(); }, []);
+  useScrollDepth();
 
   return (
     <div className="min-h-screen bg-brand-midnight selection:bg-brand-orange selection:text-brand-midnight relative">
@@ -130,8 +135,9 @@ export default function App() {
               Build with <br />
               <span className="text-brand-orange">Proof.</span>
             </h2>
-            <MagneticButton 
+            <MagneticButton
               href="#pricing"
+              onClick={() => analytics.heroCta('final_cta_build_with_proof')}
               className="inline-flex bg-brand-orange text-brand-midnight px-20 py-10 rounded-full font-black text-4xl orange-glow shimmer-btn shadow-[0_0_80px_rgba(255,153,0,0.4)] hover:scale-110 transition-transform"
             >
               Get Access Now
@@ -150,14 +156,15 @@ export default function App() {
           <p className="text-zinc-600 font-bold text-sm uppercase tracking-[0.4em]">© 2026 Astrix AI. Built for elite product teams.</p>
           
           <div className="flex items-center gap-10">
-            <a href="mailto:help.astrix@gmail.com" className="flex items-center gap-3 text-zinc-500 hover:text-white transition-colors text-[10px] font-black uppercase tracking-[0.3em]">
+            <a href="mailto:help.astrix@gmail.com" onClick={() => analytics.emailClick('footer')} className="flex items-center gap-3 text-zinc-500 hover:text-white transition-colors text-[10px] font-black uppercase tracking-[0.3em]">
               <Mail className="w-5 h-5" />
               help.astrix@gmail.com
             </a>
-            <a 
-              href="https://www.linkedin.com/in/dhruv-yadav-80b843367" 
-              target="_blank" 
+            <a
+              href="https://www.linkedin.com/in/dhruv-yadav-80b843367"
+              target="_blank"
               rel="noopener noreferrer"
+              onClick={() => analytics.linkedinClick()}
               className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-zinc-500 hover:text-[#0077B5] hover:bg-white/10 transition-all"
             >
               <Linkedin className="w-6 h-6 fill-current" />
@@ -168,8 +175,9 @@ export default function App() {
 
       {/* Sticky Mobile CTA */}
       <div className="md:hidden fixed bottom-8 left-8 right-8 z-[100]">
-        <MagneticButton 
+        <MagneticButton
           href="#pricing"
+          onClick={() => analytics.heroCta('mobile_sticky_cta')}
           className="flex items-center justify-center w-full py-7 bg-brand-orange text-brand-midnight rounded-3xl font-black text-xl orange-glow shadow-[0_20px_50px_rgba(255,153,0,0.4)]"
         >
           Reserve founding access — $1

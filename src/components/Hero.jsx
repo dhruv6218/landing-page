@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight, Zap } from 'lucide-react';
 import MagneticButton from './MagneticButton';
+import { analytics } from '../lib/analytics';
 
 export default function Hero() {
   return (
@@ -30,16 +31,18 @@ export default function Hero() {
           </p>
           
           <div className="flex flex-col sm:flex-row items-center justify-center gap-8">
-            <MagneticButton 
+            <MagneticButton
               href="#pricing"
+              onClick={() => analytics.heroCta('reserve_founding_access')}
               className="group bg-brand-orange text-brand-midnight px-14 py-7 rounded-full font-black text-2xl flex items-center gap-4 orange-glow shimmer-btn shadow-[0_0_50px_rgba(255,153,0,0.3)] hover:scale-105 transition-transform"
             >
               Reserve Founding Access — $1
               <ArrowRight className="w-7 h-7 group-hover:translate-x-2 transition-transform" />
             </MagneticButton>
-            
-            <MagneticButton 
+
+            <MagneticButton
               href="#engine"
+              onClick={() => analytics.heroCta('explore_engine')}
               className="px-14 py-7 rounded-full font-black text-2xl border border-white/10 hover:bg-white/5 transition-all backdrop-blur-md"
             >
               Explore the Engine

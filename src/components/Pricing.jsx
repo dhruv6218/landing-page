@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Check, Lock, Loader as Loader2, Sparkles, MessageCircle, ExternalLink, Star, Zap, ShieldCheck, CircleAlert as AlertCircle, Crown, Users } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import MagneticButton from './MagneticButton';
+import { analytics } from '../lib/analytics';
 
 const DODO_CHECKOUT_BASE = "https://checkout.dodopayments.com/buy";
 
@@ -125,6 +126,7 @@ function FoundingSuccess({ onReset }) {
 
         <MagneticButton
           href={FOUNDING_WA}
+          onClick={() => analytics.whatsappClick('founding')}
           className="flex items-center justify-center gap-4 w-full py-8 bg-[#25D366] text-white rounded-[2.5rem] font-black text-2xl shadow-2xl hover:shadow-[#25D366]/30 transition-all"
         >
           <MessageCircle className="w-8 h-8 fill-current" />
@@ -176,6 +178,7 @@ function PartnerSuccess({ onReset }) {
 
         <MagneticButton
           href={PARTNER_WA}
+          onClick={() => analytics.whatsappClick('partner')}
           className="flex items-center justify-center gap-4 w-full py-8 bg-[#25D366] text-white rounded-[2.5rem] font-black text-2xl shadow-2xl hover:shadow-[#25D366]/30 transition-all"
         >
           <MessageCircle className="w-8 h-8 fill-current" />
@@ -222,6 +225,7 @@ function PricingCard({ tier, loading, onSubmit, error }) {
       onMouseMove={handleMouseMove}
       initial={{ opacity: 0, y: 30 }}
       whileInView={{ opacity: 1, y: 0 }}
+      onViewportEnter={() => analytics.pricingTierView(tier.id)}
       transition={{ duration: 0.8 }}
       className={`relative p-12 md:p-16 rounded-[4rem] border flex flex-col transition-all duration-700 overflow-hidden group border-beam ${
         tier.popular ? 'bg-brand-blue/5 border-brand-orange/40 orange-glow' : 'glass-card border-white/10'
@@ -336,6 +340,7 @@ export default function Pricing() {
     if (params.get('status') === 'success') {
       const tierId = params.get('tier');
       const tier = tiers.find(t => t.id === tierId) || tiers[1];
+      analytics.paymentSuccess(tier.id);
       setSuccessTier(tier);
       window.history.replaceState({}, '', '/');
     }
@@ -344,6 +349,7 @@ export default function Pricing() {
   const handleSubmit = async (tier, email, role) => {
     setError('');
     setLoading(true);
+    analytics.pricingFormSubmit(tier.id, !!role);
 
     try {
       // For paid tiers — redirect to checkout immediately, DB insert is best-effort
@@ -377,6 +383,7 @@ export default function Pricing() {
           }).catch(err => console.error('Email send failed (non-blocking):', err));
         }
 
+        analytics.checkoutRedirect(tier.id, tier.price);
         const domain = window.location.origin;
         const redirectUrl = encodeURIComponent(`${domain}/?status=success&tier=${tier.id}`);
         const checkoutUrl = `${DODO_CHECKOUT_BASE}/${tier.productId}?quantity=1&redirect_url=${redirectUrl}&email=${encodeURIComponent(email)}`;
@@ -431,6 +438,7 @@ export default function Pricing() {
         }
       }
 
+      analytics.waitlistSuccess();
       setSuccessTier(tier);
     } catch (err) {
       console.error('Submission error:', err);
@@ -452,7 +460,13 @@ export default function Pricing() {
   }
 
   return (
-    <section id="pricing" className="py-60 relative bg-grain">
+    <section id="pricing" className="py-60 relative bg-grain" ref={(el) => {
+      if (!el) return;
+      const observer = new IntersectionObserver(([entry]) => {
+        if (entry.isIntersecting) { analytics.pricingSectionView(); observer.disconnect(); }
+      }, { threshold: 0.2 });
+      observer.observe(el);
+    }}>
       <div className="grid-overlay absolute inset-0" />
       <div className="max-w-7xl mx-auto px-6 relative z-10">
         <div className="text-center mb-40">
