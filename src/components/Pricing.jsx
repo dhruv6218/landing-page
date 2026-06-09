@@ -346,24 +346,61 @@ export default function Pricing() {
     setLoading(true);
 
     try {
+      // For paid tiers — redirect to checkout immediately, DB insert is best-effort
+      // (dodo-webhook handles payment confirmation + DB update)
+      if (tier.type === 'paid') {
+        // Best-effort DB insert, don't block checkout if it fails
+        if (supabase) {
+          supabase.from('early_access_leads').insert([{
+            email,
+            role: role || null,
+            selected_offer: tier.id,
+            payment_status: 'pending'
+          }]).then(({ error: dbError }) => {
+            if (dbError && dbError.code !== '23505') {
+              console.error('DB insert error (non-blocking):', dbError);
+            }
+          });
+        }
+
+        // Fire-and-forget email for paid tiers
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+        if (supabaseUrl && supabaseAnonKey) {
+          fetch(`${supabaseUrl}/functions/v1/send-email`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${supabaseAnonKey}`,
+            },
+            body: JSON.stringify({ email, tier: tier.id }),
+          }).catch(err => console.error('Email send failed (non-blocking):', err));
+        }
+
+        const domain = window.location.origin;
+        const redirectUrl = encodeURIComponent(`${domain}/?status=success&tier=${tier.id}`);
+        const checkoutUrl = `${DODO_CHECKOUT_BASE}/${tier.productId}?quantity=1&redirect_url=${redirectUrl}&email=${encodeURIComponent(email)}`;
+        window.location.href = checkoutUrl;
+        return;
+      }
+
+      // Free waitlist — DB insert required
       if (!supabase) {
         console.error('Supabase client is null — env vars may be missing');
-        throw new Error('Configuration error. Please try again later.');
+        throw new Error('Service unavailable. Please try again later.');
       }
 
       const { error: dbError } = await supabase.from('early_access_leads').insert([{
         email,
         role: role || null,
         selected_offer: tier.id,
-        payment_status: tier.type === 'free' ? 'not_required' : 'pending'
+        payment_status: 'not_required'
       }]);
 
       if (dbError) {
         const isDuplicate = dbError.code === '23505' ||
           dbError.message?.includes('duplicate') ||
-          dbError.message?.includes('unique') ||
-          dbError.message?.includes('already exists');
-
+          dbError.message?.includes('unique');
         if (!isDuplicate) {
           console.error('DB insert error:', dbError);
           throw new Error('Failed to save your details. Please try again.');
@@ -371,16 +408,10 @@ export default function Pricing() {
         console.log('Duplicate email, proceeding:', email);
       }
 
-      // Send welcome email via edge function
+      // Send confirmation email (required for free waitlist)
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-      if (!supabaseUrl || !supabaseAnonKey) {
-        console.error('Missing Supabase env vars for email');
-        if (tier.type === 'free') {
-          throw new Error('Email service not configured. Please contact support.');
-        }
-      } else {
+      if (supabaseUrl && supabaseAnonKey) {
         try {
           const emailRes = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
             method: 'POST',
@@ -392,27 +423,12 @@ export default function Pricing() {
           });
           const emailData = await emailRes.json();
           console.log('Email response:', emailData);
-
           if (!emailRes.ok || !emailData.sent) {
             console.error('Email failed:', emailData);
-            if (tier.type === 'free') {
-              throw new Error('Failed to send confirmation email. Please try again.');
-            }
           }
         } catch (emailErr) {
-          console.error('Email send error:', emailErr);
-          if (tier.type === 'free') {
-            throw new Error(emailErr.message || 'Failed to send confirmation email.');
-          }
+          console.error('Email send error (non-blocking):', emailErr);
         }
-      }
-
-      if (tier.type === 'paid') {
-        const domain = window.location.origin;
-        const redirectUrl = encodeURIComponent(`${domain}/?status=success&tier=${tier.id}`);
-        const checkoutUrl = `${DODO_CHECKOUT_BASE}/${tier.productId}?quantity=1&redirect_url=${redirectUrl}&email=${encodeURIComponent(email)}`;
-        window.location.href = checkoutUrl;
-        return;
       }
 
       setSuccessTier(tier);
