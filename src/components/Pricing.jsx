@@ -371,18 +371,40 @@ export default function Pricing() {
         console.log('Duplicate email, proceeding:', email);
       }
 
-      // Send welcome email via edge function (fire and forget)
+      // Send welcome email via edge function
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      if (supabaseUrl && supabaseAnonKey) {
-        fetch(`${supabaseUrl}/functions/v1/send-email`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${supabaseAnonKey}`,
-          },
-          body: JSON.stringify({ email, tier: tier.id }),
-        }).catch(err => console.error('Email send failed:', err));
+
+      if (!supabaseUrl || !supabaseAnonKey) {
+        console.error('Missing Supabase env vars for email');
+        if (tier.type === 'free') {
+          throw new Error('Email service not configured. Please contact support.');
+        }
+      } else {
+        try {
+          const emailRes = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${supabaseAnonKey}`,
+            },
+            body: JSON.stringify({ email, tier: tier.id }),
+          });
+          const emailData = await emailRes.json();
+          console.log('Email response:', emailData);
+
+          if (!emailRes.ok || !emailData.sent) {
+            console.error('Email failed:', emailData);
+            if (tier.type === 'free') {
+              throw new Error('Failed to send confirmation email. Please try again.');
+            }
+          }
+        } catch (emailErr) {
+          console.error('Email send error:', emailErr);
+          if (tier.type === 'free') {
+            throw new Error(emailErr.message || 'Failed to send confirmation email.');
+          }
+        }
       }
 
       if (tier.type === 'paid') {
